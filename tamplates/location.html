@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Select Location</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    :root {
+      --blue-50:  #E6F1FB;
+      --blue-100: #B5D4F4;
+      --blue-200: #85B7EB;
+      --blue-400: #378ADD;
+      --blue-600: #185FA5;
+      --blue-800: #0C447C;
+      --blue-900: #042C53;
+      --gray-50:  #F7F8FA;
+      --gray-100: #ECEEF2;
+      --gray-200: #D3D5DC;
+      --gray-400: #888780;
+      --gray-600: #5F5E5A;
+      --gray-900: #1A1A1A;
+      --green-600: #3B6D11;
+      --red-600:   #A32D2D;
+      --amber-600: #854F0B;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--gray-50);
+      display: flex; flex-direction: column; height: 100vh;
+    }
+
+    /* Header */
+    #header {
+      background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-800) 60%, var(--blue-600) 100%);
+      color: #fff;
+      height: 64px; padding: 0 20px;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(4,44,83,0.18);
+    }
+    .logo-wrap {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #header h1 { font-size: 15px; font-weight: 600; flex: 1; }
+
+    .back-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: white; padding: 7px 14px; border-radius: 8px;
+      cursor: pointer; font-size: 13px; font-weight: 500;
+      font-family: inherit; transition: background 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* Controls */
+    #controls {
+      background: #fff;
+      border-bottom: 0.5px solid var(--gray-100);
+      padding: 10px 16px;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 8px;
+      cursor: pointer; font-size: 13px; font-weight: 500;
+      font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary  { background: var(--blue-600); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--blue-800); }
+    .btn-success  { background: #27ae60; color: white; }
+    .btn-warn     { background: #f39c12; color: white; }
+    .btn-warn.active { background: #c0392b; }
+    .btn-danger   { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+    .btn-danger:hover:not(:disabled) { background: var(--gray-200); }
+
+    /* Info bar */
+    #info-bar {
+      background: var(--blue-50);
+      border-bottom: 0.5px solid var(--blue-100);
+      padding: 8px 16px;
+      font-size: 13px; color: var(--blue-800);
+      min-height: 34px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    #map { flex: 1; width: 100%; min-height: 0; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--blue-900); color: white;
+      padding: 10px 22px; border-radius: 999px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: opacity 0.3s; z-index: 9999; pointer-events: none;
+      box-shadow: 0 4px 14px rgba(4,44,83,0.3);
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo-wrap">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="rgba(255,255,255,0.9)"/>
+      <circle cx="12" cy="9" r="2.5" fill="#185FA5"/>
+    </svg>
+  </div>
+  <h1>Select your location</h1>
+  <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+</div>
+
+<div id="controls">
+  <button class="btn btn-primary" onclick="autoLocate()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3" fill="white"/>
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Detect my location
+  </button>
+  <button class="btn btn-warn" id="btn-select" onclick="toggleSelectMode()">
+    &#128205; Select on map
+  </button>
+  <button class="btn btn-success" id="btn-confirm" onclick="confirmLocation()" disabled>
+    &#10003; Confirm location
+  </button>
+  <button class="btn btn-danger" onclick="clearMap()">
+    &#10005; Clear
+  </button>
+</div>
+
+<div id="info-bar">&#8505; Click "Detect" or manually pick a point on the map.</div>
+<div id="map"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  var map = L.map('map').setView([28.0, 2.0], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var marker = null, circle = null, selectMode = false, selectedLatLng = null;
+
+  function showToast(msg, dur) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, dur || 2500);
+  }
+  function setInfo(msg) { document.getElementById('info-bar').innerHTML = msg; }
+
+  var blueIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:14px;height:14px;background:#185FA5;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(24,95,165,0.4)"></div>',
+    iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+
+  function placeMarker(lat, lon, label, radius) {
+    if (marker) map.removeLayer(marker);
+    if (circle) map.removeLayer(circle);
+    marker = L.marker([lat, lon], { icon: blueIcon }).addTo(map)
+      .bindPopup('<b style="color:#042C53">' + (label||'Position') + '</b><br><small>Lat: ' + lat.toFixed(5) + '<br>Lon: ' + lon.toFixed(5) + '</small>')
+      .openPopup();
+    if (radius) {
+      circle = L.circle([lat, lon], { radius: radius, color: '#378ADD', weight: 1.5, fillOpacity: 0.08 }).addTo(map);
+    }
+    map.setView([lat, lon], 14);
+    document.getElementById('btn-confirm').disabled = false;
+    selectedLatLng = { lat: lat, lon: lon };
+  }
+
+  function autoLocate() {
+    setInfo('&#9203; Detecting your location...');
+    map.locate({ setView: true, maxZoom: 14 });
+  }
+
+  map.on('locationfound', function(e) {
+    placeMarker(e.latlng.lat, e.latlng.lng, 'My GPS position', e.accuracy);
+    setInfo('&#10003; GPS found &nbsp;&nbsp; Lat: <b>' + e.latlng.lat.toFixed(5) + '</b> &nbsp; Lon: <b>' + e.latlng.lng.toFixed(5) + '</b>');
+    showToast('GPS position found!');
+    exitSelectMode();
+  });
+  map.on('locationerror', function(e) {
+    setInfo('&#10007; Unable to detect GPS position.');
+    showToast('GPS Error: ' + e.message);
+  });
+
+  function toggleSelectMode() { selectMode ? exitSelectMode() : enterSelectMode(); }
+
+  function enterSelectMode() {
+    selectMode = true;
+    map.getContainer().style.cursor = 'crosshair';
+    var btn = document.getElementById('btn-select');
+    btn.classList.add('active');
+    btn.textContent = '\u2715 Cancel selection';
+    setInfo('&#128432; Click anywhere on the map to place your position...');
+  }
+
+  function exitSelectMode() {
+    selectMode = false;
+    map.getContainer().style.cursor = '';
+    var btn = document.getElementById('btn-select');
+    btn.classList.remove('active');
+    btn.textContent = '\uD83D\uDCCD Select on map';
+  }
+
+  map.on('click', function(e) {
+    if (!selectMode) return;
+    placeMarker(e.latlng.lat, e.latlng.lng, 'Selected position');
+    setInfo('&#128205; Selected &nbsp;&nbsp; Lat: <b>' + e.latlng.lat.toFixed(5) + '</b> &nbsp; Lon: <b>' + e.latlng.lng.toFixed(5) + '</b>');
+    showToast('Position placed! Click Confirm.');
+    exitSelectMode();
+  });
+
+  function confirmLocation() {
+    if (!selectedLatLng) return;
+    localStorage.setItem('selectedLocation', JSON.stringify(selectedLatLng));
+    showToast('Location confirmed! Returning...', 1200);
+    setTimeout(function() { window.location.href = '/'; }, 1000);
+  }
+
+  function goBack() { window.location.href = '/'; }
+
+  function clearMap() {
+    if (marker) { map.removeLayer(marker); marker = null; }
+    if (circle) { map.removeLayer(circle); circle = null; }
+    selectedLatLng = null;
+    document.getElementById('btn-confirm').disabled = true;
+    setInfo('&#8505; Map cleared.');
+    exitSelectMode();
+    showToast('Map cleared');
+  }
+</script>
+</body>
+</html>
